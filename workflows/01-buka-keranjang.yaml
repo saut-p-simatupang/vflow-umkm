@@ -1,0 +1,115 @@
+version: "3.0"
+metadata:
+  id: umkm-buka-keranjang
+  name: "UMKM - Buka Keranjang Pesanan"
+  description: |
+    Workflow 1. Membuat transaksi baru (pesanan) dengan status 'draft' sebelum
+    pelanggan mulai berbelanja. Dipanggil oleh Node.js Express setelah payload
+    lolos validasi awal (API key + Joi schema).
+  dialect: vflow
+  tags: [umkm, pesanan, draft, postgres, p0]
+
+spec:
+  durability:
+    enabled: true
+    default_mode: eventual
+
+  activities:
+    - id: trigger
+      activity_type: Trigger
+      trigger_config:
+        trigger_type: webhook
+        runtime_mode: standard
+        webhook_config: { path: /umkm/pesanan/buka, method: POST }
+        response_framing: length_prefixed
+        end_activity: respond
+      output_variable: trigger_payload
+
+    # Validasi kedua di level VFlow (validasi pertama oleh Joi di Express).
+    - id: validate_input
+      activity_type: Validate
+      validate_config:
+        input: "$.trigger_payload.body"
+        schema:
+          type: object
+          required: [pelanggan_id, kasir_id]
+          properties:
+            pelanggan_id: { type: string, min_length: 1 }
+            kasir_id: { type: string, min_length: 1 }
+      output_variable: validated_body
+
+    - id: insert_pesanan
+      activity_type: Connector
+      persistence: ssot
+      connector_config:
+        connector_ref: postgres
+        operation: raw_query
+        timeout_ms: 3000
+        retry_policy:
+          max_attempts: 2
+          base_delay_ms: 100
+          max_delay_ms: 500
+          backoff_factor: 2.0
+      input_mappings:
+        - target: sql
+          source:
+            language: literal
+            source: >-
+              INSERT INTO pesanan (pelanggan_id, kasir_id, status, subtotal, total_tagihan, created_at)
+              VALUES ($1, $2, 'draft', 0, 0, now())
+              RETURNING id, status, created_at
+        - target: params
+          source:
+            language: v-cel
+            source: '[trigger_payload.body.pelanggan_id, trigger_payload.body.kasir_id]'
+      output_variable: insert_result
+
+    - id: shape_response
+      activity_type: Transform
+      input_mappings:
+        - target: response
+          source:
+            language: v-cel
+            source: '{"pesanan_id": insert_result.rows[0].id, "status": insert_result.rows[0].status, "created_at": insert_result.rows[0].created_at}'
+      output_variable: final_response
+
+    - id: rejected_response
+      activity_type: Transform
+      input_mappings:
+        - target: response
+          source:
+            language: literal
+            source: '{"status":"rejected","code":"INVALID_PAYLOAD","message":"pelanggan_id dan kasir_id wajib diisi"}'
+      output_variable: rejected_response
+
+    - id: respond
+      activity_type: EndTrigger
+      end_trigger_config:
+        trigger_ref: trigger
+        final_response: { language: spv1, source: "$.final_response" }
+
+    - id: respond-rejected
+      activity_type: EndTrigger
+      end_trigger_config:
+        trigger_ref: trigger
+        final_response: { language: spv1, source: "$.rejected_response" }
+
+    - id: end
+      activity_type: End
+
+  flows:
+    - { id: f01, from: { node: trigger }, to: { node: validate_input } }
+    - { id: f02, from: { node: validate_input }, to: { node: insert_pesanan } }
+    - { id: f03, from: { node: insert_pesanan }, to: { node: shape_response } }
+    - { id: f04, from: { node: shape_response }, to: { node: respond } }
+    - { id: f05, type: error, from: { node: validate_input }, to: { node: rejected_response } }
+    - { id: f06, from: { node: rejected_response }, to: { node: respond-rejected } }
+    - { id: f07, from: { node: respond }, to: { node: end } }
+    - { id: f08, from: { node: respond-rejected }, to: { node: end } }
+
+  variables:
+    - { name: trigger_payload, type: object }
+    - { name: validated_body, type: object }
+    - { name: insert_result, type: object }
+    - { name: final_response, type: object }
+    - { name: rejected_response, type: object }
