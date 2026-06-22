@@ -249,15 +249,6 @@ psql
 jq
 ```
 
-### Otomatis
-
-Menggunakan:
-
-```bash
-bash test/smoke-test.sh
-```
-
----
 
 ## Endpoint Server
 
