@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem POS & Monitor VFlow UMKM</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 25px;
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        .box {
+            flex: 1;
+            background: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        h2 {
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+            color: #2c3e50;
+            margin-top: 0;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .p-card {
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8fafc;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .p-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .btn-add {
+            background: #007bff;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .btn-success {
+            background: #28a745;
+            width: 100%;
+            padding: 14px;
+            margin-top: 15px;
+            font-size: 16px;
+            border-radius: 6px;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-done {
+            background: #ffc107;
+            color: #212529;
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-done:hover {
+            background: #e0a800;
+        }
+
+        .keranjang-box {
+            background: #fffdf5;
+            border: 1px dashed #ffeeba;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        #keranjang-list {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+
+        #keranjang-list li {
+            margin-bottom: 5px;
+        }
+
+        .order-item {
+            background: #ffffff;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #e2e8f0;
+            border-left: 6px solid #28a745;
+            border-radius: 6px;
+        }
+
+        .tag-status {
+            background: #e2e3e5;
+            color: #383d41;
+            padding: 3px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-transform: uppercase;
+            float: right;
+        }
+
+        .tag-rule {
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 4px 8px;
+            font-size: 13px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+
+        .error-msg {
+            color: #dc3545;
+            font-weight: bold;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Dashboard VFlow & Workflow UMKM (Database: umkm_db)</h1>
+
+    <div class="main-container">
+        <div class="box">
+            <h2>1. Aplikasi Kasir</h2>
+
+            <label for="tipe_pelanggan">Tipe Pelanggan (Pemicu VRule Potongan):</label>
+            <select id="tipe_pelanggan">
+                <option value="reguler">Reguler (Tanpa Potongan Otomatis)</option>
+                <option value="member">Member (Potongan Otomatis 10%)</option>
+            </select>
+
+            <label>Menu yang Tersedia:</label>
+            <div class="product-grid" id="produk-container">Mencoba terhubung ke backend...</div>
+
+            <div class="keranjang-box">
+                <label>Keranjang Belanja:</label>
+                <ul id="keranjang-list">
+                    <i style="color: #666;">Belum ada item yang dipilih</i>
+                </ul>
+                <h3>Subtotal: <span id="subtotal-view">Rp 0</span></h3>
+            </div>
+
+            <button class="btn-success" onclick="prosesPembayaran()">PROSES BAYAR & KIRIM KE DAPUR</button>
+        </div>
+
+        <div class="box">
+            <h2>2. Antrean Dapur (Status: Lunas)</h2>
+            <div id="antrean-dapur">Mengambil data alur kerja dapur...</div>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'http://localhost:3000';
+        let keranjang = [];
+        let subtotal = 0;
+
+        // Fungsi pembantu format Rupiah tanpa desimal sen
+        function formatRupiah(angka) {
+            return 'Rp ' + parseFloat(angka).toLocaleString('id-ID');
+        }
+
+        // 1. Ambil Produk dari Backend (PostgreSQL) saat halaman dimuat
+        async function muatProduk() {
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/produk`);
+                if (!res.ok) throw new Error("Gagal mengambil data produk dari server backend.");
+
+                const dataProduk = await res.json();
+                const container = document.getElementById('produk-container');
+                container.innerHTML = '';
+
+                if (dataProduk.length === 0) {
+                    container.innerHTML = '<i>Produk tidak ditemukan atau stok kosong di umkm_db.</i>';
+                    return;
+                }
+
+                dataProduk.forEach(p => {
+                    container.innerHTML += `
+                        <div class="p-card">
+                            <strong>${p.nama}</strong><br>
+                            <span style="color: #2c3e50; font-weight: 500;">${formatRupiah(p.harga)}</span><br>
+                            <small style="color: #666;">Stok: ${p.stok}</small><br>
+                            <button class="btn-add" onclick="tambahKeranjang(${p.id}, '${p.nama}', ${p.harga}, ${p.stok})">+ Pilih</button>
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                console.error(error);
+                document.getElementById('produk-container').innerHTML = `
+                    <span class="error-msg">Gagal Memuat Produk!<br><small>Pastikan backend menyala di port 3000 dan DB umkm_db aktif.</small></span>
+                `;
+            }
+        }
+
+        // 2. Logika menambah item ke keranjang lokal
+        function tambahKeranjang(id, nama, harga, stokMaks) {
+            const eksis = keranjang.find(item => item.produk_id === id);
+
+            if (eksis) {
+                if (eksis.jumlah >= stokMaks) {
+                    alert(`Tidak bisa menambah jumlah. Stok maks di database hanya ${stokMaks}!`);
+                    return;
+                }
+                eksis.jumlah += 1;
+            } else {
+                keranjang.push({ produk_id: id, name: nama, jumlah: 1, harga_satuan: harga });
+            }
+            hitungTotal();
+        }
+
+        // 3. Hitung Total Belanjaan & Perbarui Tampilan List Keranjang
+        function hitungTotal() {
+            subtotal = 0;
+            const list = document.getElementById('keranjang-list');
+
+            if (keranjang.length === 0) {
+                list.innerHTML = '<i style="color: #666;">Belum ada item yang dipilih</i>';
+                document.getElementById('subtotal-view').innerText = 'Rp 0';
+                return;
+            }
+
+            list.innerHTML = '';
+            keranjang.forEach(item => {
+                const totalItem = item.harga_satuan * item.jumlah;
+                subtotal += totalItem;
+                list.innerHTML += `<li>${item.name} <b>x${item.jumlah}</b> - ${formatRupiah(totalItem)}</li>`;
+            });
+            document.getElementById('subtotal-view').innerText = formatRupiah(subtotal);
+        }
+
+        // 4. Mengalirkan Data (VFLOW) ke backend untuk dinilai oleh aturan bisnis (VRULE)
+        async function prosesPembayaran() {
+            if (keranjang.length === 0) {
+                alert("Keranjang masih kosong! Silakan pilih menu terlebih dahulu.");
+                return;
+            }
+
+            const payload = {
+                pelanggan_id: null,
+                tipe_pelanggan: document.getElementById('tipe_pelanggan').value,
+                kasir_id: 'Kasir_Utama_UMKM',
+                items: keranjang
+            };
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/pesanan`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) throw new Error("Terjadi kesalahan pada sistem backend saat menyimpan transaksi.");
+
+                const data = await res.json();
+
+                if (data.id) {
+                    alert(`TRANSAKSI BERHASIL (ID Pesanan: #${data.id})\n` +
+                        `Status Alur Kerja: ${data.status.toUpperCase()}\n` +
+                        `Total Akhir (Setelah VRule): ${formatRupiah(data.total)}\n` +
+                        `Log Aturan Bisnis: ${data.catatan}`);
+
+                    // Reset Keranjang Belanja setelah sukses
+                    keranjang = [];
+                    hitungTotal();
+
+                    // Segarkan Data Produk (karena stok berkurang) dan Antrean Dapur
+                    muatProduk();
+                    muatWorkflowDapur();
+                } else {
+                    alert("Gagal memproses transaksi.");
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // 5. Mengambil data pesanan aktif dari database yang berstatus 'lunas' untuk koki dapur
+        async function muatWorkflowDapur() {
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/workflow/dapur`);
+                if (!res.ok) throw new Error();
+
+                const antrean = await res.json();
+                const container = document.getElementById('antrean-dapur');
+
+                if (antrean.length === 0) {
+                    container.innerHTML = '<i style="color: #666;">Tidak ada antrean pesanan makanan saat ini.</i>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                antrean.forEach(order => {
+                    let itemHtml = order.detail.map(d => `${d.nama} <b>(x${d.jumlah})</b>`).join(', ');
+                    container.innerHTML += `
+                        <div class="order-item">
+                            <span class="tag-status">${order.status}</span>
+                            <h3>Pesanan #${order.id}</h3>
+                            <p style="margin: 8px 0;"><strong>Menu Masak:</strong> ${itemHtml}</p>
+                            <div>Catatan Otomasi VRule:</div>
+                            <span class="tag-rule">💡 ${order.catatan}</span>
+                            <button class="btn-done" onclick="selesaikanMasakan(${order.id})">Selesai Masak & Hidangkan ✔</button>
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                document.getElementById('antrean-dapur').innerHTML = `
+                    <span style="color: red; font-size: 13px;">Gagal memuat antrean dapur dari server.</span>
+                `;
+            }
+        }
+
+        // 6. Mengubah fasa alur kerja (Workflow) dari 'lunas' -> 'selesai'
+        async function selesaikanMasakan(id) {
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/workflow/pesanan/${id}/selesai`, {
+                    method: 'PATCH'
+                });
+                if (!res.ok) throw new Error("Gagal memperbarui fasa workflow.");
+
+                // Segarkan data antrean dapur
+                muatWorkflowDapur();
+            } catch (error) {
+                alert(`Gagal menyelesaikan pesanan: ${error.message}`);
+            }
+        }
+
+        // --- Inisialisasi Aplikasi Pertama Kali Dijalankan ---
+        muatProduk();
+        muatWorkflowDapur();
+
+        // Melakukan sinkronisasi otomatis layar dapur setiap 5 detik agar selalu up-to-date
+        setInterval(muatWorkflowDapur, 5000);
+    </script>
+</body>
+
+</html>

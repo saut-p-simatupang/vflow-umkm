@@ -148,7 +148,7 @@ Gunakan `vflow-admin.sh` (lebih simpel) atau curl manual. Path di bawah
 relatif ke folder `umkm-vflow/` hasil sebelumnya.
 
 ```bash
-for f in umkm-vflow/workflows/*.yaml; do
+for f in workflows/*.yaml; do
   echo "== provisioning $f =="
   ./scripts/vflow-admin.sh workflows provision "$f"
 done
